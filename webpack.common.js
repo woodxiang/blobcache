@@ -2,14 +2,11 @@ const path = require("path");
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 
 module.exports = {
-  mode: "development",
-  entry: "./src/BlobCache.ts",
-  devtool: "inline-source-map",
+  entry: "./src/BlobCache",
   output: {
     path: path.resolve(__dirname, "dist"),
-    filename: "boundle.js",
+    filename: "BlobCache.js",
     library: "blobcache",
-    // libraryTarget: "umd",
   },
   plugins: [new CleanWebpackPlugin()],
   resolve: { extensions: [".ts", ".js"] },
