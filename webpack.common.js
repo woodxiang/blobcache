@@ -9,34 +9,13 @@ module.exports = {
     library: "blobcache",
   },
   plugins: [new CleanWebpackPlugin()],
-  resolve: { extensions: [".ts", ".js"] },
+  resolve: { extensions: [".ts"] },
   module: {
     rules: [
       {
-        test: /\.{js|ts|tsx|jsx}$/,
+        test: /\.ts$/,
         exclude: /node_modules/,
-        use: {
-          loader: "babel-loader",
-          options: {
-            presets: [
-              ["@babel/preset-env", { targets: { browsers: "defaults" } }],
-              "@babel/preset-typescript",
-            ],
-            plugins: [
-              "@babel/proposal-class-properties",
-              "@babel/proposal-object-rest-spread",
-              "@babel/plugin-transform-runtime",
-            ],
-          },
-        },
-      },
-      {
-        test: /\.css$/,
-        use: ["style-loader", "css-loader"],
-      },
-      {
-        test: /\.html$/,
-        use: [{ loader: "html-loader" }],
+        use: "ts-loader",
       },
     ],
   },
