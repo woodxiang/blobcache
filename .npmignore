@@ -1,0 +1,7 @@
+src/__tests__
+node_modules
+dist/__tests__
+dist/coverage
+coverage
+.*
+jestconfig.json
