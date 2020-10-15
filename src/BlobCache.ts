@@ -9,7 +9,7 @@ import {
  */
 interface DataItem<T> {
   indexKey: string;
-  lastAccess: Date;
+  lastAccess: number;
   data: T;
 }
 
@@ -28,13 +28,19 @@ export default class BlobCache<T> {
   /**
    * Constructor
    * @param dbName database name
-   * @param storeName store name
    * @param dbVersion version, in integer
    */
-  constructor(dbName: string, storeName: string, dbVersion: number) {
+  constructor(dbName: string, dbVersion: number) {
     this.dbName = dbName;
-    this.storeName = storeName;
+    this.storeName = 'cache-store';
     this.dbVersion = dbVersion;
+  }
+
+  /**
+   * return ture is db was opened.
+   */
+  get opened(): boolean {
+    return this.db !== undefined;
   }
 
   /**
@@ -62,6 +68,73 @@ export default class BlobCache<T> {
   }
 
   /**
+   * Close the db
+   */
+  close(): void {
+    if (this.db === undefined) {
+      throw new Error('db was not opened.');
+    }
+
+    this.db.close();
+  }
+
+  /**
+   *
+   * @param days remove the data not accessed days ago.
+   */
+  async CleanToDate(days: number): Promise<number> {
+    if (this.db === undefined) {
+      await this.openAsync();
+    }
+
+    if (this.db === undefined) {
+      throw Error('db not opened.');
+    }
+
+    const date = Date.now() - days * 24 * 3600 * 1000;
+
+    console.log(`clean data periored ${date}`);
+    const tranaction = this.db.transaction([this.storeName], 'readwrite');
+    const dataStore = tranaction.objectStore(this.storeName);
+
+    const index = dataStore.index('lastAccess');
+    const toRemoves = await Request2Promise(
+      index.getAll(IDBKeyRange.upperBound(date))
+    );
+
+    toRemoves.forEach(async (v) => {
+      const item = v as DataItem<T>;
+      await Request2Promise(dataStore.delete(item.indexKey));
+    });
+
+    await Transaction2Promise(tranaction);
+
+    return toRemoves.length;
+  }
+
+  async getRecordCount(): Promise<number> {
+    if (this.db === undefined) {
+      await this.openAsync();
+    }
+
+    if (this.db === undefined) {
+      throw Error('db not opened.');
+    }
+
+    const transaction = this.db.transaction([this.storeName], 'readonly');
+    const promise = Transaction2Promise(transaction);
+
+    const dataStore = transaction.objectStore(this.storeName);
+    const result = await Request2Promise(dataStore.getAllKeys());
+
+    if (await promise) {
+      return result.length;
+    }
+
+    throw Error('get record count failed.');
+  }
+
+  /**
    * insert data into database.
    * @param key key of the data
    * @param data data
@@ -76,8 +149,8 @@ export default class BlobCache<T> {
     }
 
     // create transaction.
-    const req = this.db.transaction([this.storeName], 'readwrite');
-    const promise = Transaction2Promise(req);
+    const transaction = this.db.transaction([this.storeName], 'readwrite');
+    const promise = Transaction2Promise(transaction);
     promise
       .then((finished) => {
         if (finished) {
@@ -92,11 +165,13 @@ export default class BlobCache<T> {
 
     const newItem: DataItem<T> = {
       indexKey: key,
-      lastAccess: new Date(),
+      lastAccess: Date.now(),
       data,
     };
 
-    const store = req.objectStore(this.storeName);
+    console.log('add data at ', newItem.lastAccess);
+
+    const store = transaction.objectStore(this.storeName);
 
     // check data exists.
     const queriedKey = await Request2Promise(store.getKey(key));
@@ -191,7 +266,9 @@ export default class BlobCache<T> {
 
     // update last access data
     if (result) {
-      result.lastAccess = new Date();
+      result.lastAccess = Date.now();
+
+      console.log(`update data access date to ${result.lastAccess}`);
 
       const putReq = store.put(result);
       await Request2Promise<IDBValidKey>(putReq);
