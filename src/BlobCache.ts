@@ -52,18 +52,14 @@ export default class BlobCache<T> {
     }
     const openReqest = indexedDB.open(this.dbName, this.dbVersion);
     const openPromise = OpenDBRequest2Promise(openReqest, (newdb) => {
-      console.log('db upgrade needed.');
-
       // create schema of the dabase.
       const store = newdb.createObjectStore(this.storeName, {
         keyPath: 'indexKey',
       });
       store.createIndex('lastAccess', 'lastAccess', { unique: false });
-      console.log('db upgraded');
     });
 
     this.db = await openPromise;
-    console.log('db opened.');
     return this.db;
   }
 
@@ -93,7 +89,6 @@ export default class BlobCache<T> {
 
     const date = Date.now() - days * 24 * 3600 * 1000;
 
-    console.log(`clean data periored ${date}`);
     const tranaction = this.db.transaction([this.storeName], 'readwrite');
     const dataStore = tranaction.objectStore(this.storeName);
 
@@ -151,25 +146,15 @@ export default class BlobCache<T> {
     // create transaction.
     const transaction = this.db.transaction([this.storeName], 'readwrite');
     const promise = Transaction2Promise(transaction);
-    promise
-      .then((finished) => {
-        if (finished) {
-          console.log('insert transaction finished.');
-        } else {
-          console.log('insert transaction aborted.');
-        }
-      })
-      .catch((reason) => {
-        console.error('insert transaction failed.', reason);
-      });
+    promise.catch((reason) => {
+      console.error('insert transaction failed.', reason);
+    });
 
     const newItem: DataItem<T> = {
       indexKey: key,
       lastAccess: Date.now(),
       data,
     };
-
-    console.log('add data at ', newItem.lastAccess);
 
     const store = transaction.objectStore(this.storeName);
 
@@ -183,13 +168,9 @@ export default class BlobCache<T> {
     const addReq = store.add(newItem);
 
     const addRequestPromise = Request2Promise<IDBValidKey>(addReq);
-    addRequestPromise
-      .then(() => {
-        console.log('new data added.');
-      })
-      .catch((reason) => {
-        console.error('Add data failed.', (reason as DOMException).message);
-      });
+    addRequestPromise.catch((reason) => {
+      console.error('Add data failed.', (reason as DOMException).message);
+    });
 
     await addRequestPromise;
     const ret = await promise;
@@ -213,15 +194,9 @@ export default class BlobCache<T> {
     // create transaction
     const req = this.db.transaction([this.storeName], 'readwrite');
     const promise = Transaction2Promise(req);
-    promise
-      .then((finished) => {
-        if (finished) {
-          console.log('get data transaction finished.');
-        }
-      })
-      .catch((reason) => {
-        console.error('get data failed.', reason);
-      });
+    promise.catch((reason) => {
+      console.error('get data failed.', reason);
+    });
 
     const store = req.objectStore(this.storeName);
 
@@ -248,15 +223,9 @@ export default class BlobCache<T> {
     // create transaction
     const req = this.db.transaction([this.storeName], 'readwrite');
     const promise = Transaction2Promise(req);
-    promise
-      .then((finished) => {
-        if (finished) {
-          console.log('get data transaction finished.');
-        }
-      })
-      .catch((reason) => {
-        console.error('get data failed.', reason);
-      });
+    promise.catch((reason) => {
+      console.error('get data failed.', reason);
+    });
 
     const store = req.objectStore(this.storeName);
 
@@ -267,14 +236,11 @@ export default class BlobCache<T> {
     // update last access data
     if (result) {
       result.lastAccess = Date.now();
-
-      console.log(`update data access date to ${result.lastAccess}`);
-
       const putReq = store.put(result);
       await Request2Promise<IDBValidKey>(putReq);
     }
 
     await promise;
-    return Promise.resolve(result?.data);
+    return Promise.resolve(result.data);
   }
 }
