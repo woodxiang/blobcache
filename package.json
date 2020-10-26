@@ -1,11 +1,12 @@
 {
   "name": "blobcache",
-  "version": "1.0.9",
+  "version": "1.0.11",
   "description": "",
   "main": "./dist/BlobCache.js",
   "types": "./dist/BlobCache.d.ts",
   "scripts": {
     "test": "jest --config jestconfig.json",
+    "monitor-test": "jest --config jestconfig.json --watch",
     "build": "tsc",
     "format": "prettier --write src/**/*.{js,jsx,ts,tsx}",
     "lint": "eslint --fix src/**/*.{js,jsx,ts,tsx}"

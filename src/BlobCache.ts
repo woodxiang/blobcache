@@ -77,6 +77,7 @@ export default class BlobCache<T> {
   /**
    *
    * @param days remove the data not accessed days ago.
+   * @returns number of record deleted.
    */
   async CleanToDate(days: number): Promise<number> {
     if (this.db === undefined) {
@@ -107,6 +108,9 @@ export default class BlobCache<T> {
     return toRemoves.length;
   }
 
+  /**
+   * obtain the total record count.
+   */
   async getRecordCount(): Promise<number> {
     if (this.db === undefined) {
       await this.openAsync();
@@ -133,6 +137,7 @@ export default class BlobCache<T> {
    * insert data into database.
    * @param key key of the data
    * @param data data
+   * @returns return insert successed or not.
    */
   async insertAsync(key: string, data: T): Promise<boolean> {
     if (this.db === undefined) {
@@ -147,14 +152,8 @@ export default class BlobCache<T> {
     const transaction = this.db.transaction([this.storeName], 'readwrite');
     const promise = Transaction2Promise(transaction);
     promise.catch((reason) => {
-      console.error('insert transaction failed.', reason);
+      throw Error(`insert transaction failed.${reason}`);
     });
-
-    const newItem: DataItem<T> = {
-      indexKey: key,
-      lastAccess: Date.now(),
-      data,
-    };
 
     const store = transaction.objectStore(this.storeName);
 
@@ -164,15 +163,22 @@ export default class BlobCache<T> {
       return false;
     }
 
+    const newItem: DataItem<T> = {
+      indexKey: key,
+      lastAccess: Date.now(),
+      data,
+    };
+
     // add new data
     const addReq = store.add(newItem);
 
     const addRequestPromise = Request2Promise<IDBValidKey>(addReq);
     addRequestPromise.catch((reason) => {
-      console.error('Add data failed.', (reason as DOMException).message);
+      throw Error(`Add data failed.${(reason as DOMException).message}`);
     });
 
     await addRequestPromise;
+
     const ret = await promise;
 
     return ret;
@@ -181,6 +187,7 @@ export default class BlobCache<T> {
   /**
    * check exists key.
    * @param key the key of the data to query
+   * @returns return is record exists.
    */
   async existAsync(key: string): Promise<boolean> {
     if (this.db === undefined) {
@@ -195,7 +202,7 @@ export default class BlobCache<T> {
     const req = this.db.transaction([this.storeName], 'readwrite');
     const promise = Transaction2Promise(req);
     promise.catch((reason) => {
-      console.error('get data failed.', reason);
+      throw Error(`get data failed.${reason}`);
     });
 
     const store = req.objectStore(this.storeName);
@@ -210,8 +217,9 @@ export default class BlobCache<T> {
   /**
    * pick data from database. by key.
    * @param key key of the data to pick
+   * @returns return the picked object or null if not exists.
    */
-  async pickAsync(key: string): Promise<T | undefined> {
+  async pickAsync(key: string): Promise<T | null> {
     if (this.db === undefined) {
       await this.openAsync();
     }
@@ -224,14 +232,14 @@ export default class BlobCache<T> {
     const req = this.db.transaction([this.storeName], 'readwrite');
     const promise = Transaction2Promise(req);
     promise.catch((reason) => {
-      console.error('get data failed.', reason);
+      throw Error(`get data failed.${reason}`);
     });
 
     const store = req.objectStore(this.storeName);
 
     // get data.
     const getReq = store.get(key);
-    const result = await Request2Promise<DataItem<T>>(getReq);
+    const result = await Request2Promise<DataItem<T> | undefined>(getReq);
 
     // update last access data
     if (result) {
@@ -241,6 +249,6 @@ export default class BlobCache<T> {
     }
 
     await promise;
-    return Promise.resolve(result.data);
+    return Promise.resolve(result ? result.data : null);
   }
 }

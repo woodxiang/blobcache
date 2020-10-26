@@ -83,5 +83,26 @@ test('raw indexdb api test', async () => {
     expect(bRet).toBeTruthy();
   }
 
+  {
+    // test get data failed.
+    const transaction = db.transaction(storeName, 'readwrite');
+    const store = transaction.objectStore(storeName);
+
+    let isSucceeded = false;
+    const result = await wrapper
+      .Request2Promise(store.getKey('not exists'))
+      .then((v) => {
+        console.log(`the result is ${v}`);
+        isSucceeded = v !== undefined;
+      })
+      .catch((v) => {
+        console.log(`the result is ${v}`);
+        isSucceeded = false;
+      });
+
+    expect(isSucceeded).toBeFalsy();
+    expect(result).toBeUndefined();
+  }
+
   db.close();
 });
