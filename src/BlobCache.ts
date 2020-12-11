@@ -46,7 +46,7 @@ export default class BlobCache<T> {
   /**
    * Open DB
    */
-  async openAsync(): Promise<IDBDatabase> {
+  async openAsync(): Promise<IDBDatabase | undefined> {
     if (this.db !== undefined) {
       throw new Error('db already opened.');
     }
@@ -57,6 +57,8 @@ export default class BlobCache<T> {
         keyPath: 'indexKey',
       });
       store.createIndex('lastAccess', 'lastAccess', { unique: false });
+    }).catch(() => {
+      return undefined;
     });
 
     this.db = await openPromise;
